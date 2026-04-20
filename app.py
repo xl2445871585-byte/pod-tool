@@ -60,6 +60,12 @@ DEFAULT_RULES = {
         "02": {"size": "40*120cm", "price": 190, "length": 35, "width": 25, "height": 12, "weight": 1500},
         "04": {"size": "80*120cm", "price": 240, "length": 40, "width": 30, "height": 15, "weight": 2500},
     },
+    "detail_image_mapping": {
+        "1": "01",  # 详情图1 使用编号01的图片
+        "2": "03",  # 详情图2 使用编号03的图片
+        "3": "04",  # 详情图3 使用编号04的图片
+        "4": "05",  # 详情图4 使用编号05的图片
+    },
     "image_count": 8  # 每个款号最多8张图
 }
 
@@ -192,6 +198,51 @@ def main():
                         st.session_state.show_add_size = False
                         st.success("已添加！")
                         st.rerun()
+        
+        st.markdown("---")
+        
+        # 详情图配置
+        st.subheader("🖼️ 详情图配置")
+        st.caption("设置详情图使用的图片编号")
+        
+        if "detail_image_mapping" not in rules:
+            rules["detail_image_mapping"] = DEFAULT_RULES.get("detail_image_mapping", {})
+        
+        # 显示当前详情图配置
+        for detail_num, img_num in list(rules.get("detail_image_mapping", {}).items()):
+            col1, col2, col3 = st.columns([2, 2, 1])
+            with col1:
+                st.text(f"详情图 {detail_num}")
+            with col2:
+                new_img_num = st.text_input("图片编号", value=img_num, key=f"detail_img_{detail_num}", label_visibility="collapsed")
+            with col3:
+                if st.button("🗑️", key=f"del_detail_{detail_num}"):
+                    if detail_num in rules["detail_image_mapping"]:
+                        del rules["detail_image_mapping"][detail_num]
+                        save_config(RULES_FILE, rules)
+                        st.rerun()
+            
+            # 更新配置
+            if new_img_num != img_num:
+                rules["detail_image_mapping"][detail_num] = new_img_num.zfill(2)
+                save_config(RULES_FILE, rules)
+        
+        # 添加新详情图
+        if st.button("➕ 添加详情图位"):
+            st.session_state.show_add_detail = True
+        
+        if st.session_state.get('show_add_detail', False):
+            with st.form("add_detail_form"):
+                add_detail_num = st.text_input("详情图序号 (如 5, 6)")
+                add_img_num = st.text_input("使用的图片编号 (如 06, 07)")
+                
+                if st.form_submit_button("添加"):
+                    if add_detail_num and add_img_num:
+                        rules.setdefault("detail_image_mapping", {})[add_detail_num] = add_img_num.zfill(2)
+                        save_config(RULES_FILE, rules)
+                        st.session_state.show_add_detail = False
+                        st.success("已添加！")
+                        st.rerun()
     
     # 主区域
     tab1, tab2 = st.tabs(["📤 上传处理", "📋 使用说明"])
@@ -285,6 +336,13 @@ def main():
                         preview_url = url_map[(style_code, img_num)]
                         carousel = "\n".join(all_urls)
                         
+                        # 获取详情图URL
+                        detail_images = {}
+                        detail_mapping = rules.get("detail_image_mapping", {})
+                        for detail_num, detail_img_num in detail_mapping.items():
+                            if (style_code, detail_img_num) in url_map:
+                                detail_images[f"详情图{detail_num}"] = url_map[(style_code, detail_img_num)]
+                        
                         product = {
                             "*产品标题": "Modern Pattern Area Rug for Living Room Bedroom Decor",
                             "*英文标题": "Modern Pattern Area Rug for Living Room Bedroom Decor",
@@ -314,6 +372,11 @@ def main():
                             "发货时效（天）": 2,
                             "产地": "中国",
                         }
+                        
+                        # 添加详情图字段
+                        for detail_name, detail_url in sorted(detail_images.items(), key=lambda x: int(x[0].replace("详情图", ""))):
+                            product[detail_name] = detail_url
+                        
                         all_products.append(product)
                 
                 # 生成Excel

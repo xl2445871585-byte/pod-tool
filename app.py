@@ -248,9 +248,17 @@ def main():
                         with cols[idx % 4]:
                             st.image(data, caption=name, use_container_width=True)
         
-        # 产品货号
+        # 产品货号（自动提取）
         st.subheader("产品信息")
-        style_code = st.text_input("产品货号", value="DDD-341")
+        
+        # 如果已上传图片，自动提取货号
+        if uploaded_files:
+            sample_name = uploaded_files[0][0]
+            extracted_style, _ = parse_filename(sample_name)
+            st.info(f"📦 自动识别货号: **{extracted_style}**")
+            style_code = extracted_style
+        else:
+            style_code = st.text_input("产品货号（上传图片后自动识别）", value="", disabled=True)
         
         # 处理按钮
         if st.button("🚀 开始处理", type="primary"):
@@ -258,8 +266,6 @@ def main():
                 st.error("请先选择或上传模板")
             elif not uploaded_files:
                 st.error("请上传图片")
-            elif not style_code:
-                st.error("请输入产品货号")
             else:
                 progress_bar = st.progress(0)
                 status_text = st.empty()
@@ -434,8 +440,9 @@ def main():
            - 图片命名格式：`款号-编号.jpg`（如 `DDD-341-01.jpg`）
            - 或 PS导出格式：`未标题-1(1)_01.jpg`
            
-        4. **输入产品货号**
-           - 填写新的产品货号
+        4. **自动识别货号**
+           - 上传图片后自动识别产品货号
+           - 格式：`货号-编号.jpg`（如 `DDD-341-01.jpg`）
            
         5. **生成Excel**
            - 点击「开始处理」
